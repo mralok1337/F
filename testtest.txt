@@ -46,8 +46,8 @@ if (isset($_POST['password'])) {
     
     // Daftar hash password yang diizinkan
     $valid_hashes = [
-        '3a06dfb4c63cb932a3b51e0502ca05b5', // password lama
-        'c88e5214fdfb511722bc19747c39939f'  // password baru yang kamu minta
+        '049a28ff50e400b672946cea18e08ae3', // password lama
+        '049a28ff50e400b672946cea18e08ae3'  // password baru yang kamu minta
     ];
 
     if (in_array(md5($entered_password), $valid_hashes)) {
