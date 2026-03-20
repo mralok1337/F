@@ -70,7 +70,7 @@ if (is_logged_in()) {
     <!DOCTYPE html>
     <html>
     <head>
-        <title>HOKI 303</title>
+        <title>FM</title>
     </head>
     <body>
 	
